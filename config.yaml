@@ -1,0 +1,24 @@
+name: Shelly Konfigurator
+version: "2.0.0"
+slug: shelly_config_tool
+description: Ein Zwei-Modus-Tool zur Konfiguration von Shelly-Geräten in deinem Netzwerk.
+startup: services
+boot: auto
+url: "https://github.com/dein-github-name/shelly-configurator"
+arch:
+  - armhf
+  - armv7
+  - aarch64
+  - amd64
+  - i386
+init: false
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: Web-Benutzeroberfläche
+host_network: true
+privileged:
+  - SYS_ADMIN
+  - NET_ADMIN
+options: {}
+schema: {}
