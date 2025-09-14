@@ -12,9 +12,13 @@ DATA_DIR = "/data"
 DEVICES_FILE = os.path.join(DATA_DIR, "shelly_devices.json")
 LOG_FILE = os.path.join(DATA_DIR, "add-on.log")
 
+# Überprüfe die Umgebungsvariable für den Debug-Modus
+# Der Wert '1' oder 'true' wird als aktiv betrachtet, alles andere als inaktiv
+DEBUG_MODE = os.environ.get('FLASK_DEBUG', '0').lower() in ('1', 'true')
+
 # Setup Logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG if DEBUG_MODE else logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
 )
@@ -184,4 +188,4 @@ def get_status():
     return jsonify(current_status)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=DEBUG_MODE)
