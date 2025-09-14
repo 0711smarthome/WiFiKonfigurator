@@ -1,0 +1,11 @@
+{
+  "name": "0711smarthome Home Assistant Addons",
+  "url": "https://github.com/0711smarthome/WiFiKonfigurator",
+  "maintainer": "0711smarthome <smarthome@0711.de>",
+  "addons": [
+    {
+      "name": "WiFiKonfigurator",
+      "slug": "wifikonfigurator"
+    }
+  ]
+}
