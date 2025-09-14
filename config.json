@@ -28,5 +28,6 @@
     "NET_ADMIN"
   ],
   "options": {},
-  "schema": {}
+  "schema": {
+    "debug_mode": "bool"}
 }
