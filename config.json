@@ -27,7 +27,5 @@
     "SYS_ADMIN",
     "NET_ADMIN"
   ],
-  "options": {
-    "debug_mode": false
-  },
+  "options": {},
   "schema": {}
