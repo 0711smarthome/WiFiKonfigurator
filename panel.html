@@ -129,7 +129,7 @@
             setupButton.click();
         });
 
-        // Einrichtungsmodus Funktionen
+        // panel.html
         async function scanAndLoadDevices() {
             const scanButton = document.getElementById('scan-button');
             const saveButton = document.getElementById('save-button');
@@ -143,14 +143,27 @@
 
             try {
                 const response = await fetch('/api/setup/scan', { method: 'POST' });
-                const result = await response.json();
 
-                if (result.status === 'success') {
-                    displaySetupDevices(result.data);
-                    updateStatus('scan-status', `Scan erfolgreich. ${result.data.length} Geräte gefunden.`, 'success');
-                } else {
-                    updateStatus('scan-status', `Fehler beim Scan: ${result.message}`, 'error');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    updateStatus('scan-status', `Netzwerkfehler: ${errorText}`, 'error');
+                    return;
                 }
+
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        displaySetupDevices(result.data);
+                        updateStatus('scan-status', `Scan erfolgreich. ${result.data.length} Geräte gefunden.`, 'success');
+                    } else {
+                        updateStatus('scan-status', `Fehler beim Scan: ${result.message}`, 'error');
+                    }
+                } else {
+                    const errorText = await response.text();
+                    updateStatus('scan-status', `Unerwartete Antwort vom Server: ${errorText}`, 'error');
+                }
+
             } catch (error) {
                 updateStatus('scan-status', `Fehler beim Senden der Anfrage: ${error}`, 'error');
             } finally {
