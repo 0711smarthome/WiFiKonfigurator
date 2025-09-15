@@ -6,6 +6,7 @@ import requests
 import logging
 from urllib.parse import quote
 from flask import Flask, jsonify, request, render_template
+from werkzeug.middleware.proxy_fix import ProxyFix # <--- Fügen Sie diesen Import hinzu!
 
 # Konfiguration
 DATA_DIR = "/data"
