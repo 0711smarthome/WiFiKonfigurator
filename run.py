@@ -58,7 +58,7 @@ def save_shelly_devices(devices):
 
 
 # --- API-Endpunkte für den Einrichtungsmodus ---
-@app.route("/")
+@app.route("/home")
 def index():
     # Lies die Version aus der Umgebungsvariable, die HA bereitstellt
     # 'N/A' ist ein Standardwert, falls die Variable nicht gefunden wird
