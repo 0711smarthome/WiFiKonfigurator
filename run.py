@@ -54,7 +54,10 @@ def save_shelly_devices(devices):
 # --- API-Endpunkte für den Einrichtungsmodus ---
 @app.route("/")
 def index():
-    return render_template("panel.html")
+    # Lies die Version aus der Umgebungsvariable, die HA bereitstellt
+    # 'N/A' ist ein Standardwert, falls die Variable nicht gefunden wird
+    addon_version = os.environ.get('VERSION', 'N/A')
+    return render_template("panel.html", version=addon_version)
 
 @app.route("/api/setup/scan", methods=["POST"])
 def setup_scan():
