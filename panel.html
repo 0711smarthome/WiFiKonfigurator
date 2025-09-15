@@ -142,7 +142,7 @@
             statusDiv.classList.add('hidden');
 
             try {
-                const response = await fetch('/api/setup/scan', { method: 'POST' });
+                const response = await fetch('/api/hassio_ingress/2b7875d4_shelly_config_tool/api/setup/scan', { method: 'POST' });
 
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -199,7 +199,7 @@
         
         async function loadSavedDevicesForSetup() {
             try {
-                const response = await fetch('/api/configure/get_saved_devices');
+                const response = await fetch('/api/hassio_ingress/2b7875d4_shelly_config_tool/api/configure/get_saved_devices');
                 const result = await response.json();
                 displaySetupDevices(result.data);
             } catch (error) {
@@ -221,7 +221,7 @@
             });
             
             try {
-                const response = await fetch('/api/setup/save', {
+                const response = await fetch('/api/hassio_ingress/2b7875d4_shelly_config_tool/api/setup/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ devices: devices })
@@ -251,7 +251,7 @@
             statusDiv.classList.add('hidden');
 
             try {
-                const response = await fetch('/api/configure/start', {
+                const response = await fetch('/api/hassio_ingress/2b7875d4_shelly_config_tool/api/configure/start', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ssid: ssidInput.value, password: passwordInput.value })
