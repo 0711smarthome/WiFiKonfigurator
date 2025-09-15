@@ -84,35 +84,17 @@ def index():
 
 @app.route("/api/setup/scan", methods=["POST"])
 def setup_scan():
-    """Scannt nach allen WLANs für den Einrichtungsmodus."""
-    global current_status
-    current_status = []
+    logging.info("Starte temporären Test-Scan...")
     
-    try:
-        logging.info("Starte WLAN-Scan für Einrichtungsmodus...")
-        output = subprocess.check_output(
-            ["nmcli", "-t", "dev", "wifi", "list", "--rescan", "yes"],
-            stderr=subprocess.STDOUT, timeout=120,
-        ).decode("utf-8")
-        
-        networks = []
-        lines = output.strip().split("\n")
-        # Überspringt die Kopfzeile
-        for line in lines[1:]:
-            parts = line.split(":")
-            if len(parts) >= 11:
-                ssid = parts[1]
-                bssid = parts[0]
-                signal = parts[10]
-                is_shelly = ssid.startswith('shelly-')
-                networks.append({"ssid": ssid, "bssid": bssid, "signal": signal, "description": "", "selected": is_shelly})
+    # Ersetzen des nmcli-Aufrufs durch statische Daten für den Test
+    test_data = [
+        {"ssid": "shelly-123456", "bssid": "AA:BB:CC:DD:EE:F1", "signal": "85", "description": "Wohnzimmerlicht", "selected": True},
+        {"ssid": "FRITZ!Box", "bssid": "AA:BB:CC:DD:EE:F2", "signal": "90", "description": "", "selected": False},
+        {"ssid": "shelly-654321", "bssid": "AA:BB:CC:DD:EE:F3", "signal": "78", "description": "Steckdose Keller", "selected": True},
+    ]
 
-        return jsonify({"status": "success", "data": networks})
-
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
-        logging.error(f"Fehler beim Scan: {e}")
-        logging.error(f"Der genaue Fehler ist: {e}") # <--- Fügen Sie diese Zeile hinzu
-        return jsonify({"status": "error", "message": str(e)})
+    logging.info("Temporäre Testdaten werden zurückgegeben.")
+    return jsonify({"status": "success", "data": test_data})
 
 @app.route("/api/setup/save", methods=["POST"])
 def setup_save():
