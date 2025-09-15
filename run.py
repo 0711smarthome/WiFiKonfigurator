@@ -67,45 +67,8 @@ def index():
 
 @app.route("/api/setup/scan", methods=["POST"])
 def setup_scan():
-    logging.info("Starte mDNS-Scan nach Shelly-Geräten...")
-    found_devices = []
-    
-    # Timeout für den mDNS-Scan
-    timeout = 10
-    end_time = time.time() + timeout
-    
-    # Callback-Funktion zur Verarbeitung von gefundenen Geräten
-    def on_service_added(zeroconf, type, name):
-        nonlocal found_devices
-        try:
-            info = zeroconf.get_service_info(type, name, 3000)
-            if info and b'shelly' in info.properties.get(b'model', b''):
-                ip_address = socket.inet_ntoa(info.addresses[0])
-                device = {
-                    "ssid": name.replace(type, "").strip('.'),
-                    "ip": ip_address,
-                    "description": info.properties.get(b'friendly_name', b'').decode('utf-8'),
-                    "model": info.properties.get(b'model', b'').decode('utf-8')
-                }
-                found_devices.append(device)
-                logging.info(f"Shelly-Gerät gefunden: {device['ssid']} auf {device['ip']}")
-        except Exception as e:
-            logging.error(f"Fehler bei der Verarbeitung des mDNS-Dienstes: {e}")
-    
-    zeroconf_instance = zeroconf.Zeroconf()
-    browser = zeroconf.ServiceBrowser(zeroconf_instance, "_http._tcp.local.", handlers=[on_service_added])
-    
-    while time.time() < end_time:
-        time.sleep(1)
-        if len(found_devices) > 0:
-            break
-
-    zeroconf_instance.close()
-
-    if not found_devices:
-        return jsonify({"status": "error", "message": "Keine Shelly-Geräte gefunden. Stellen Sie sicher, dass sie eingeschaltet und mit demselben Netzwerk verbunden sind."})
-    
-    return jsonify({"status": "success", "data": found_devices})
+    logging.info("TEST: Scan-Endpunkt wurde aufgerufen, gebe leere Liste zurück.")
+    return jsonify({"status": "success", "data": []})
 
 @app.route("/api/setup/save", methods=["POST"])
 def setup_save():
@@ -118,9 +81,8 @@ def setup_save():
 # --- API-Endpunkte für den Änderungsmodus ---
 @app.route("/api/configure/get_saved_devices", methods=["GET"])
 def configure_get_devices():
-    """Gibt die gespeicherten Geräte für den Änderungsmodus zurück."""
-    devices = get_shelly_devices()
-    return jsonify({"status": "success", "data": devices})
+    logging.info("TEST: Get-Devices-Endpunkt wurde aufgerufen, gebe leere Liste zurück.")
+    return jsonify({"status": "success", "data": []})
 
 
 @app.route("/api/configure/start", methods=["POST"])
