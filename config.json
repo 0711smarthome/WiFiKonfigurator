@@ -27,6 +27,10 @@
     "SYS_ADMIN",
     "NET_ADMIN"
   ],
-  "options": {},
-  "schema": {}
+  "options": {
+    "FLASK_DEBUG": true
+  },
+  "schema": {
+    "FLASK_DEBUG": "bool"
+  }
   }
