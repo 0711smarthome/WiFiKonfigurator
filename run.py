@@ -111,6 +111,7 @@ def setup_scan():
 
     except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
         logging.error(f"Fehler beim Scan: {e}")
+        logging.error(f"Der genaue Fehler ist: {e}") # <--- Fügen Sie diese Zeile hinzu
         return jsonify({"status": "error", "message": str(e)})
 
 @app.route("/api/setup/save", methods=["POST"])
