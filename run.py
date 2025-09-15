@@ -92,7 +92,7 @@ def setup_scan():
         logging.info("Starte WLAN-Scan für Einrichtungsmodus...")
         output = subprocess.check_output(
             ["nmcli", "-t", "dev", "wifi", "list", "--rescan", "yes"],
-            stderr=subprocess.STDOUT, timeout=45,
+            stderr=subprocess.STDOUT, timeout=120,
         ).decode("utf-8")
         
         networks = []
