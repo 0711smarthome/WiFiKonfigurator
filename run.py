@@ -1,12 +1,12 @@
-import subprocess
 import json
-import os
-import time
+import socket
+import zeroconf
 import requests
 import logging
+import time
 from urllib.parse import quote
 from flask import Flask, jsonify, request, render_template
-from werkzeug.middleware.proxy_fix import ProxyFix # <--- Fügen Sie diesen Import hinzu!
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Konfiguration
 DATA_DIR = "/data"
@@ -49,33 +49,6 @@ def save_shelly_devices(devices):
     except IOError as e:
         logging.error(f"Fehler beim Speichern der Gerätedaten: {e}")
 
-def get_current_network_id():
-    """Ermittelt die SSID (ID) des aktuell verbundenen Netzwerks."""
-    try:
-        output = subprocess.check_output(
-            ["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"],
-            stderr=subprocess.DEVNULL,
-        ).decode("utf-8")
-        lines = output.strip().split("\n")
-        for line in lines:
-            if line.startswith("yes"):
-                return line.split(":", 1)[1]
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logging.warning("Konnte das aktuelle Netzwerk nicht ermitteln.")
-    return None
-
-def restore_original_network(original_ssid):
-    """Stellt die Verbindung zum ursprünglichen Netzwerk wieder her."""
-    if original_ssid:
-        try:
-            logging.info(f"Versuche, die Verbindung zu '{original_ssid}' wiederherzustellen...")
-            subprocess.check_output(["nmcli", "con", "up", "id", original_ssid], stderr=subprocess.DEVNULL)
-            logging.info(f"Verbindung zu '{original_ssid}' erfolgreich wiederhergestellt.")
-            return True
-        except subprocess.CalledProcessError as e:
-            logging.error(f"Fehler beim Wiederherstellen der Verbindung: {e}")
-            return False
-    return False
 
 # --- API-Endpunkte für den Einrichtungsmodus ---
 @app.route("/")
@@ -84,17 +57,45 @@ def index():
 
 @app.route("/api/setup/scan", methods=["POST"])
 def setup_scan():
-    logging.info("Starte temporären Test-Scan...")
+    logging.info("Starte mDNS-Scan nach Shelly-Geräten...")
+    found_devices = []
     
-    # Ersetzen des nmcli-Aufrufs durch statische Daten für den Test
-    test_data = [
-        {"ssid": "shelly-123456", "bssid": "AA:BB:CC:DD:EE:F1", "signal": "85", "description": "Wohnzimmerlicht", "selected": True},
-        {"ssid": "FRITZ!Box", "bssid": "AA:BB:CC:DD:EE:F2", "signal": "90", "description": "", "selected": False},
-        {"ssid": "shelly-654321", "bssid": "AA:BB:CC:DD:EE:F3", "signal": "78", "description": "Steckdose Keller", "selected": True},
-    ]
+    # Timeout für den mDNS-Scan
+    timeout = 10
+    end_time = time.time() + timeout
+    
+    # Callback-Funktion zur Verarbeitung von gefundenen Geräten
+    def on_service_added(zeroconf, type, name):
+        nonlocal found_devices
+        try:
+            info = zeroconf.get_service_info(type, name, 3000)
+            if info and b'shelly' in info.properties.get(b'model', b''):
+                ip_address = socket.inet_ntoa(info.addresses[0])
+                device = {
+                    "ssid": name.replace(type, "").strip('.'),
+                    "ip": ip_address,
+                    "description": info.properties.get(b'friendly_name', b'').decode('utf-8'),
+                    "model": info.properties.get(b'model', b'').decode('utf-8')
+                }
+                found_devices.append(device)
+                logging.info(f"Shelly-Gerät gefunden: {device['ssid']} auf {device['ip']}")
+        except Exception as e:
+            logging.error(f"Fehler bei der Verarbeitung des mDNS-Dienstes: {e}")
+    
+    zeroconf_instance = zeroconf.Zeroconf()
+    browser = zeroconf.ServiceBrowser(zeroconf_instance, "_http._tcp.local.", handlers=[on_service_added])
+    
+    while time.time() < end_time:
+        time.sleep(1)
+        if len(found_devices) > 0:
+            break
 
-    logging.info("Temporäre Testdaten werden zurückgegeben.")
-    return jsonify({"status": "success", "data": test_data})
+    zeroconf_instance.close()
+
+    if not found_devices:
+        return jsonify({"status": "error", "message": "Keine Shelly-Geräte gefunden. Stellen Sie sicher, dass sie eingeschaltet und mit demselben Netzwerk verbunden sind."})
+    
+    return jsonify({"status": "success", "data": found_devices})
 
 @app.route("/api/setup/save", methods=["POST"])
 def setup_save():
@@ -129,26 +130,23 @@ def configure_start():
         current_status.append({"type": "warning", "message": "Keine Geräte zum Konfigurieren gespeichert."})
         return jsonify(current_status)
 
-    original_network = get_current_network_id()
-    
     current_status.append({"type": "info", "message": f"Starte Konfiguration für {len(devices)} Geräte..."})
-    
+
     encoded_ssid = quote(personal_ssid)
     encoded_password = quote(personal_password)
     
     for device in devices:
-        ssid = device['ssid']
-        bssid = device['bssid']
+        ssid = device.get('ssid')
+        ip = device.get('ip')  # Wir verwenden jetzt die IP
         
-        try:
-            current_status.append({"type": "progress", "message": f"Verbinde mich mit '{ssid}'...", "ssid": ssid})
-            subprocess.check_output(
-                ["nmcli", "dev", "wifi", "connect", ssid, "bssid", bssid],
-                stderr=subprocess.DEVNULL, timeout=60,
-            )
-            time.sleep(10)
+        if not ip:
+            current_status.append({"type": "error", "message": f"Gerät '{ssid}' hat keine IP-Adresse. Überspringe...", "ssid": ssid})
+            continue
 
-            url = f"http://{shelly_ip}/settings/sta?ssid={encoded_ssid}&password={encoded_password}"
+        try:
+            current_status.append({"type": "progress", "message": f"Konfiguriere '{ssid}' über IP-Adresse...", "ssid": ssid})
+            
+            url = f"http://{ip}/settings/sta?ssid={encoded_ssid}&password={encoded_password}"
             response = requests.get(url, timeout=15)
             
             if response.status_code == 200:
@@ -156,17 +154,14 @@ def configure_start():
             else:
                 current_status.append({"type": "error", "message": f"'{ssid}' API-Fehler: HTTP {response.status_code}", "ssid": ssid})
 
-        except (subprocess.CalledProcessError, requests.exceptions.RequestException, subprocess.TimeoutExpired) as e:
+        except requests.exceptions.RequestException as e:
             error_message = f"Fehler bei der Konfiguration von '{ssid}': {e}"
             current_status.append({"type": "error", "message": error_message, "ssid": ssid})
             logging.error(error_message)
-        
-    if not restore_original_network(original_network):
-        current_status.append({"type": "error", "message": f"Netzwerk '{original_network}' konnte nicht automatisch wiederhergestellt werden. Bitte manuell verbinden.", "ssid": ""})
-            
+
     current_status.append({"type": "info", "message": "Konfiguration abgeschlossen."})
     return jsonify(current_status)
-
+    
 @app.route("/api/status")
 def get_status():
     return jsonify(current_status)
