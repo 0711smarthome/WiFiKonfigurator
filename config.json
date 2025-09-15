@@ -29,8 +29,10 @@
   ],
   "options": {
     "FLASK_DEBUG": true
+    "network_manager": true
   },
   "schema": {
     "FLASK_DEBUG": "bool"
+    "network_manager": "bool"
   }
   }
