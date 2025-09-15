@@ -31,16 +31,22 @@ shelly_ip = '192.168.33.1'
 
 app = Flask(__name__, template_folder=".")
 
-# --- Hilfsfunktionen für Datenverwaltung und Netzwerk-Status ---
 def get_shelly_devices():
-    """Lädt die gespeicherte Liste der Shelly-Geräte."""
-    if os.path.exists(DEVICES_FILE):
-        try:
-            with open(DEVICES_FILE, "r") as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError) as e:
-            logging.error(f"Fehler beim Laden der Gerätedaten: {e}")
-    return []
+    """Lädt die gespeicherte Liste der Shelly-Geräte auf eine sichere Weise."""
+    if not os.path.exists(DEVICES_FILE):
+        return []  # Datei existiert nicht, alles ok, leere Liste zurückgeben.
+
+    try:
+        # Prüfen, ob die Datei leer ist, da json.load() damit nicht umgehen kann
+        if os.path.getsize(DEVICES_FILE) == 0:
+            return [] # Datei ist leer, leere Liste zurückgeben.
+            
+        with open(DEVICES_FILE, "r") as f:
+            return json.load(f)
+            
+    except (IOError, json.JSONDecodeError, OSError) as e:
+        logging.error(f"Fehler beim Lesen oder Parsen der Gerätedatei ({DEVICES_FILE}): {e}")
+        return [] # Bei JEDEM Fehler eine leere Liste zurückgeben, um Abstürze zu vermeiden.
 
 def save_shelly_devices(devices):
     """Speichert die Liste der Shelly-Geräte."""
