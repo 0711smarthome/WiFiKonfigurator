@@ -58,17 +58,57 @@ def save_shelly_devices(devices):
 
 
 # --- API-Endpunkte für den Einrichtungsmodus ---
-@app.route("/home")
+@app.route("/")
 def index():
     # Lies die Version aus der Umgebungsvariable, die HA bereitstellt
     # 'N/A' ist ein Standardwert, falls die Variable nicht gefunden wird
     addon_version = os.environ.get('VERSION', 'N/A')
     return render_template("panel.html", version=addon_version)
 
+# Ersetze deine gesamte setup_scan Funktion hiermit:
+
 @app.route("/api/setup/scan", methods=["POST"])
 def setup_scan():
-    logging.info("TEST: Scan-Endpunkt wurde aufgerufen, gebe leere Liste zurück.")
-    return jsonify({"status": "success", "data": []})
+    logging.info("Starte mDNS-Scan nach Shelly-Geräten...")
+    try:
+        found_devices = []
+        timeout = 10
+        
+        # Die innere Callback-Funktion bleibt unverändert
+        def on_service_added(zeroconf_instance, type, name):
+            nonlocal found_devices
+            try:
+                info = zeroconf_instance.get_service_info(type, name, 3000)
+                if info and b'shelly' in info.properties.get(b'model', b''):
+                    ip_address = socket.inet_ntoa(info.addresses[0])
+                    device = {
+                        "ssid": name.replace(type, "").strip('.'),
+                        "ip": ip_address,
+                        "description": info.properties.get(b'friendly_name', b'').decode('utf-8'),
+                        "model": info.properties.get(b'model', b'').decode('utf-8')
+                    }
+                    found_devices.append(device)
+                    logging.info(f"Shelly-Gerät gefunden: {device['ssid']} auf {device['ip']}")
+            except Exception as e:
+                logging.error(f"Fehler bei der Verarbeitung des mDNS-Dienstes: {e}")
+        
+        zeroconf_instance = zeroconf.Zeroconf()
+        browser = zeroconf.ServiceBrowser(zeroconf_instance, "_http._tcp.local.", handlers=[on_service_added])
+        
+        time.sleep(timeout)
+        zeroconf_instance.close()
+
+        if not found_devices:
+            return jsonify({"status": "error", "message": "Keine Shelly-Geräte gefunden (nach Scan)."})
+        
+        return jsonify({"status": "success", "data": found_devices})
+
+    except Exception as e:
+        # DIES IST DER ENTSCHEIDENDE TEIL:
+        # Wir fangen JEDEN denkbaren Fehler ab und loggen ihn.
+        logging.error("Ein kritischer Fehler ist im mDNS-Scan aufgetreten!", exc_info=True)
+        # Wir geben eine saubere Fehlermeldung an das Frontend zurück, anstatt abzustürzen.
+        return jsonify({"status": "error", "message": f"Serverfehler während des Scans: {e}"}), 500
 
 @app.route("/api/setup/save", methods=["POST"])
 def setup_save():
