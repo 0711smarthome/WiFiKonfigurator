@@ -18,11 +18,11 @@ LOG_FILE = os.path.join(DATA_DIR, "add-on.log")
 # Der Wert '1' oder 'true' wird als aktiv betrachtet, alles andere als inaktiv
 DEBUG_MODE = os.environ.get('FLASK_DEBUG', '0').lower() in ('1', 'true')
 
-# Setup Logging
+# Ersetze den alten logging-Block in run.py hiermit:
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    #handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
+    # handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()], # DEAKTIVIERT
 )
 
 # Globale Variablen
