@@ -67,7 +67,7 @@ def index():
 
 # Ersetze deine gesamte setup_scan Funktion hiermit:
 
-@app.route("/api/setup/scan", methods=["POST"])
+@app.route("/setup/scan", methods=["POST"])
 def setup_scan():
     logging.info("Starte mDNS-Scan nach Shelly-Geräten...")
     try:
@@ -110,7 +110,7 @@ def setup_scan():
         # Wir geben eine saubere Fehlermeldung an das Frontend zurück, anstatt abzustürzen.
         return jsonify({"status": "error", "message": f"Serverfehler während des Scans: {e}"}), 500
 
-@app.route("/api/setup/save", methods=["POST"])
+@app.route("/setup/save", methods=["POST"])
 def setup_save():
     """Speichert die vom Benutzer ausgewählten Geräte."""
     devices_data = request.json.get("devices", [])
@@ -119,13 +119,13 @@ def setup_save():
     return jsonify({"status": "success", "message": f"{len(selected_devices)} Geräte gespeichert."})
 
 # --- API-Endpunkte für den Änderungsmodus ---
-@app.route("/api/configure/get_saved_devices", methods=["GET"])
+@app.route("/configure/get_saved_devices", methods=["GET"])
 def configure_get_devices():
     logging.info("TEST: Get-Devices-Endpunkt wurde aufgerufen, gebe leere Liste zurück.")
     return jsonify({"status": "success", "data": []})
 
 
-@app.route("/api/configure/start", methods=["POST"])
+@app.route("/configure/start", methods=["POST"])
 def configure_start():
     """Startet den Konfigurationsprozess für die gespeicherten Geräte."""
     global current_status
@@ -174,7 +174,7 @@ def configure_start():
     current_status.append({"type": "info", "message": "Konfiguration abgeschlossen."})
     return jsonify(current_status)
     
-@app.route("/api/status")
+@app.route("/status")
 def get_status():
     return jsonify(current_status)
 
