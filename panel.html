@@ -28,8 +28,7 @@
 
         <div id="pin-input-container" class="hidden bg-gray-50 border border-gray-200 rounded-md p-4 mb-6">
             <h2 class="text-xl font-semibold text-blue-500 mb-4">PIN eingeben</h2>
-            <p class="text-gray-700 mb-4">Bitte gib den PIN ein, um den Einrichtungsmodus zu starten.</p>
-            <input type="password" id="pin-input" placeholder="PIN" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2">
+            <input type="password" id="pin-input" placeholder="PIN" class="block w-full rounded-md border-gray-300 shadow-sm px-3 py-2">
             <button id="pin-submit-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg mt-4 transition duration-300">Bestätigen</button>
             <p id="pin-error" class="text-red-600 mt-2 hidden">Falscher PIN.</p>
         </div>
@@ -56,6 +55,7 @@
     </div>
     
     <script>
+        // --- Globale Variablen und Konstanten ---
         const setupModeDiv = document.getElementById('setup-mode');
         const configureModeDiv = document.getElementById('configure-mode');
         const setupButton = document.getElementById('mode-setup-button');
@@ -65,17 +65,13 @@
         const pinSubmitButton = document.getElementById('pin-submit-button');
         const pinError = document.getElementById('pin-error');
         const CORRECT_PIN = "0711";
-
         let currentDeviceList = [];
 
-        // --- Event Listeners & Mode Switching ---
+        // --- Event Listeners für Modus-Wechsel ---
         setupButton.addEventListener('click', () => {
             configureModeDiv.classList.add('hidden');
             setupModeDiv.classList.add('hidden');
             pinInputContainer.classList.remove('hidden');
-            pinError.classList.add('hidden');
-            pinInput.value = '';
-            
             setupButton.classList.add('bg-blue-600', 'text-white');
             setupButton.classList.remove('bg-gray-300', 'text-gray-800');
             configureButton.classList.add('bg-gray-300', 'text-gray-800');
@@ -96,29 +92,24 @@
             setupModeDiv.classList.add('hidden');
             pinInputContainer.classList.add('hidden');
             configureModeDiv.classList.remove('hidden');
-            
             configureButton.classList.add('bg-blue-600', 'text-white');
             configureButton.classList.remove('bg-gray-300', 'text-gray-800');
             setupButton.classList.add('bg-gray-300', 'text-gray-800');
             setupButton.classList.remove('bg-blue-600', 'text-white');
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            setupButton.click();
-        });
+        document.addEventListener('DOMContentLoaded', () => setupButton.click());
         
-        // --- Setup Mode Functions ---
+        // --- API-Aufrufe ---
         async function scanAndLoadDevices() {
-            const spinner = document.getElementById('scan-spinner');
-            const statusDiv = document.getElementById('scan-status');
-            spinner.classList.remove('hidden');
-            statusDiv.classList.add('hidden');
-            
+            updateStatus('scan-status', 'Suche nach Geräten...', 'info');
+            document.getElementById('scan-spinner').classList.remove('hidden');
             try {
-                const response = await fetch('/setup/scan', { method: 'POST' });
+                // KORREKTUR: Relativer Pfad ohne führenden "/"
+                const response = await fetch('setup/scan', { method: 'POST' });
                 const result = await response.json();
-                if (result.status === 'success') {
-                    displaySetupDevices(result.data, true); // true = select all new devices
+                if (response.ok && result.status === 'success') {
+                    displaySetupDevices(result.data, true);
                     updateStatus('scan-status', `${result.data.length} Geräte gefunden.`, 'success');
                 } else {
                     updateStatus('scan-status', `Fehler: ${result.message}`, 'error');
@@ -126,20 +117,76 @@
             } catch (error) {
                 updateStatus('scan-status', `Netzwerkfehler: ${error}`, 'error');
             } finally {
-                spinner.classList.add('hidden');
+                document.getElementById('scan-spinner').classList.add('hidden');
             }
         }
 
+        async function loadSavedDevicesForSetup() {
+            try {
+                // KORREKTUR: Relativer Pfad ohne führenden "/"
+                const response = await fetch('configure/get_saved_devices');
+                const result = await response.json();
+                if (response.ok && result.status === 'success') {
+                    displaySetupDevices(result.data.map(d => ({ ...d, selected: true })));
+                }
+            } catch (error) {
+                console.error('Fehler beim Laden der gespeicherten Geräte:', error);
+            }
+        }
+        
+        async function saveSelectedDevices() {
+            const devicesToSave = currentDeviceList.map(device => {
+                const checkbox = document.querySelector(`#setup-device-list input[data-ip="${device.ip}"]`);
+                const descriptionInput = checkbox ? checkbox.closest('li').querySelector('.description-input') : null;
+                return { ...device, description: descriptionInput?.value, selected: checkbox?.checked };
+            });
+            try {
+                // KORREKTUR: Relativer Pfad ohne führenden "/"
+                const response = await fetch('setup/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ devices: devicesToSave })
+                });
+                const result = await response.json();
+                updateStatus('scan-status', result.message, 'success');
+            } catch (error) {
+                updateStatus('scan-status', `Fehler beim Speichern: ${error}`, 'error');
+            }
+        }
+
+        async function configureDevices() {
+            const ssid = document.getElementById('personal-ssid').value;
+            if (!ssid) {
+                updateStatus('configure-status', 'Bitte gib eine WLAN-SSID ein.', 'error');
+                return;
+            }
+            const password = document.getElementById('personal-password').value;
+            document.getElementById('configure-spinner').classList.remove('hidden');
+            try {
+                // KORREKTUR: Relativer Pfad ohne führenden "/"
+                const response = await fetch('configure/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ssid, password })
+                });
+                const results = await response.json();
+                updateStatusFromBackend(results);
+            } catch (error) {
+                updateStatus('configure-status', `Kritischer Fehler: ${error}`, 'error');
+            } finally {
+                document.getElementById('configure-spinner').classList.add('hidden');
+            }
+        }
+        
+        // --- UI-Hilfsfunktionen ---
         function displaySetupDevices(devices, selectAll = false) {
             currentDeviceList = devices;
             const list = document.getElementById('setup-device-list');
             list.innerHTML = '';
-            
             if (devices.length === 0) {
                 list.innerHTML = `<li class="text-gray-500">Keine Geräte gefunden oder gespeichert.</li>`;
                 return;
             }
-
             devices.forEach(device => {
                 const li = document.createElement('li');
                 li.className = 'flex items-center space-x-4 p-3 bg-white rounded-md shadow-sm';
@@ -156,74 +203,10 @@
             });
         }
         
-        async function loadSavedDevicesForSetup() {
-            try {
-                const response = await fetch('/configure/get_saved_devices');
-                const result = await response.json();
-                if (result.status === 'success') {
-                    displaySetupDevices(result.data.map(d => ({ ...d, selected: true }))); // Mark all saved as selected
-                }
-            } catch (error) {
-                console.error('Fehler beim Laden der gespeicherten Geräte:', error);
-            }
-        }
-        
-        async function saveSelectedDevices() {
-            const devicesToSave = currentDeviceList.map(device => {
-                const checkbox = document.querySelector(`#setup-device-list input[data-ip="${device.ip}"]`);
-                const descriptionInput = checkbox ? checkbox.closest('li').querySelector('.description-input') : null;
-                return {
-                    ...device,
-                    description: descriptionInput ? descriptionInput.value : device.description,
-                    selected: checkbox ? checkbox.checked : false,
-                };
-            });
-            
-            try {
-                const response = await fetch('/setup/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ devices: devicesToSave })
-                });
-                const result = await response.json();
-                updateStatus('scan-status', result.message, 'success');
-            } catch (error) {
-                updateStatus('scan-status', `Fehler beim Speichern: ${error}`, 'error');
-            }
-        }
-
-        // --- Configure Mode Functions ---
-        async function configureDevices() {
-            const ssid = document.getElementById('personal-ssid').value;
-            const password = document.getElementById('personal-password').value;
-            const spinner = document.getElementById('configure-spinner');
-
-            if (!ssid) {
-                updateStatus('configure-status', 'Bitte gib eine WLAN-SSID ein.', 'error');
-                return;
-            }
-            
-            spinner.classList.remove('hidden');
-            try {
-                const response = await fetch('/configure/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ssid, password })
-                });
-                const results = await response.json();
-                updateStatusFromBackend(results);
-            } catch (error) {
-                updateStatus('configure-status', `Kritischer Fehler: ${error}`, 'error');
-            } finally {
-                spinner.classList.add('hidden');
-            }
-        }
-
         function updateStatusFromBackend(messages) {
             const statusDiv = document.getElementById('configure-status');
             statusDiv.classList.remove('hidden');
             statusDiv.innerHTML = '';
-            
             messages.forEach(msg => {
                 const p = document.createElement('p');
                 p.textContent = msg.message;
@@ -238,9 +221,7 @@
             const element = document.getElementById(id);
             element.textContent = message;
             element.className = `mt-4 p-3 rounded-md`;
-            if (type === 'success') element.classList.add('status-success');
-            else if (type === 'error') element.classList.add('status-error');
-            else if (type === 'info') element.classList.add('status-info');
+            element.classList.add(type === 'success' ? 'status-success' : (type === 'error' ? 'status-error' : 'status-info'));
             element.classList.remove('hidden');
         }
     </script>
