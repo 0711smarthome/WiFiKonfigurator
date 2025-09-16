@@ -22,7 +22,7 @@ DEBUG_MODE = os.environ.get('FLASK_DEBUG', '0').lower() in ('1', 'true')
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
+    #handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
 )
 
 # Globale Variablen

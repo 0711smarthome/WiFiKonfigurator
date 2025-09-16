@@ -1,6 +1,6 @@
 {
   "name": "Shelly Konfigurator",
-  "version": "5.8",
+  "version": "5.8.1",
   "slug": "shelly_config_tool",
   "description": "Ein Zwei-Modus-Tool zur Konfiguration von Shelly-Geräten in deinem Netzwerk.",
   "startup": "services",
